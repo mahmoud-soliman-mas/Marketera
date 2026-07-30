@@ -1,0 +1,12 @@
+{
+  "name": "Marketra AI",
+  "short_name": "Marketra AI",
+  "description": "Marketra AI is an all-in-one AI marketing platform for creating viral hooks, ad copy, SEO content, marketing strategies, and high-converting campaigns powered by AI.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0ea5e9",
+  "lang": "ar",
+  "dir": "rtl",
+  "icons": []
+}
