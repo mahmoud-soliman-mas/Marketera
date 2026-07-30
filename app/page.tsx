@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import SplashScreen from '@/components/splash-screen';
 import { Menu, Settings, Sparkles, Command } from 'lucide-react';
 import { Sidebar } from '@/components/sidebar';
 import { Generator, Footer } from '@/components/generator';
@@ -38,6 +39,7 @@ function AppContent() {
   const [activeToolId, setActiveToolId] = useState<ToolId>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [showsplash , setshowsplash] = useState(true);
   const [reopenedHistory, setReopenedHistory] = useState<HistoryItem | null>(null);
   const { language, t, direction } = useI18n();
 
@@ -53,6 +55,10 @@ function AppContent() {
     setActiveToolId(item.type as ToolId);
     setReopenedHistory({ ...item, results: [] });
   }, []);
+
+    if (showsplash) {
+      return <SplashScreen onFinish={() => setshowsplash(false)} />;
+    }
 
   return (
     <div className="relative flex h-screen overflow-hidden bg-background text-foreground" dir={direction}>
