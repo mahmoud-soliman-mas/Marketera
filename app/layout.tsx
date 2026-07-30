@@ -3,6 +3,7 @@ import './globals.css';
 import type { Metadata } from 'next';
 import Script from 'next/script';
 import { Toaster } from '@/components/ui/sonner';
+import ClientLayout from "@/components/ClientLayout";
 import { Viewport } from 'next/dist/lib/metadata/types/extra-types';
 
 // معالجة آمنة لـ SITE_URL للوقاية من أخطاء new URL()
@@ -125,7 +126,10 @@ export default function RootLayout({
         />
       </head>
       <body className="font-sans antialiased">
-        {children}
+        <ClientLayout>
+          {children}
+        </ClientLayout>
+
         <Toaster richColors position="top-center" />
       </body>
     </html>
