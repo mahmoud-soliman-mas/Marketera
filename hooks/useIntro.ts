@@ -8,7 +8,7 @@ export function useIntro() {
     const [showIntro , setShowIntro] = useState(false);
 
     useEffect(() => {
-        const seen = localStorage.getIem(KEY);
+        const seen = localStorage.getItem(KEY);
 
         if (!seen) {
             setShowIntro(true);

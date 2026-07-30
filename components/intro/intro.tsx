@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { motion } from "framer-motion";
+import IntroScene from "./introscene";
 
 interface IntroProps {
   onFinish: () => void;
@@ -17,19 +18,18 @@ export default function Intro({ onFinish }: IntroProps) {
   }, [onFinish]);
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[9999] bg-black flex items-center justify-center"
-    >
-      <h1 className="text-white text-5xl font-bold">
-        Marketera AI
-      </h1>
+    <motion.div className="relative min-h-screen">
+      <IntroScene />
+
+      <div className="absolute inset-0 flex items-center justify-center">
+        <h1 className="text-6xl font-bold text-white tracking-widest">
+          MARKETERA AI
+        </h1>
+      </div>
 
       <button
         onClick={onFinish}
-        className="absolute bottom-10 right-10 rounded-lg border border-white px-5 py-2 text-white hover:bg-white hover:text-black transition"
+        className="absolute bottom-8 right-8 rounded-lg border border-white/30 bg-black/30 px-5 py-2 text-white backdrop-blur-md hover:bg-white hover:text-black transition"
       >
         Skip Intro
       </button>
