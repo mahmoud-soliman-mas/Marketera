@@ -9,7 +9,7 @@ export default function ClientLayout ({ children }: { children: ReactNode }) {
 
     return (
         <> 
-        {showIntro && <Intro onFinish={finishIntro} />}
+        <Intro onFinish={finishIntro} />        
         {children}
         </>
     );

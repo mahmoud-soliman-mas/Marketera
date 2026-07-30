@@ -19,9 +19,8 @@ export default function Intro({ onFinish }: IntroProps) {
 
   return (
     <motion.div className="relative min-h-screen">
-      <IntroScene />
-
-      <div className="absolute inset-0 flex items-center justify-center">
+        <IntroScene />
+        <div className="absolute inset-0 flex items-center justify-center">
         <h1 className="text-6xl font-bold text-white tracking-widest">
           MARKETERA AI
         </h1>
