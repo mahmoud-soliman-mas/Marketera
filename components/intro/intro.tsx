@@ -42,14 +42,10 @@ export default function Intro({ onFinish }: IntroProps) {
 
   useEffect(() => {
     if (!started) return;
-    let frame = 0;
-    const syncRobot = () => {
-      const nextProgress = robotProgressRef.current;
-      setRobotProgress(nextProgress);
-      frame = window.requestAnimationFrame(syncRobot);
-    };
-    frame = window.requestAnimationFrame(syncRobot);
-    return () => window.cancelAnimationFrame(frame);
+    const syncRobot = () => setRobotProgress(robotProgressRef.current);
+    syncRobot();
+    const timer = window.setInterval(syncRobot, 80);
+    return () => window.clearInterval(timer);
   }, [started]);
 
   const finish = useCallback(() => {

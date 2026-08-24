@@ -46,13 +46,10 @@ export default function RobotSpeech({ progressRef, language, reducedMotion = fal
   }, [autoSpeak, language]);
 
   useEffect(() => {
-    let frame = 0;
-    const sync = () => {
-      setProgress(clamp01(progressRef.current));
-      frame = window.requestAnimationFrame(sync);
-    };
-    frame = window.requestAnimationFrame(sync);
-    return () => window.cancelAnimationFrame(frame);
+    const sync = () => setProgress(clamp01(progressRef.current));
+    sync();
+    const timer = window.setInterval(sync, 80);
+    return () => window.clearInterval(timer);
   }, [progressRef]);
 
   useEffect(() => {
@@ -61,25 +58,47 @@ export default function RobotSpeech({ progressRef, language, reducedMotion = fal
     const synthesis = window.speechSynthesis;
     let cancelled = false;
     let index = 0;
+    let started = false;
+    let startTimer: number | undefined;
 
     const speakNext = () => {
       if (cancelled || index >= lines.length) return;
+      synthesis.resume();
       const utterance = new SpeechSynthesisUtterance(lines[index].text);
       utterance.lang = language === 'ar' ? 'ar-SA' : 'en-US';
       utterance.rate = language === 'ar' ? 0.68 : 0.72;
       utterance.pitch = 0.94;
       utterance.volume = 1;
+      const requestedLanguage = language === 'ar' ? 'ar' : 'en';
+      const matchingVoice = synthesis.getVoices().find((voice) => voice.lang.toLowerCase().startsWith(requestedLanguage));
+      if (matchingVoice) utterance.voice = matchingVoice;
       utterance.onend = () => {
         index += 1;
         if (!cancelled) window.setTimeout(speakNext, 520);
       };
+      utterance.onerror = () => {
+        index += 1;
+        if (!cancelled) window.setTimeout(speakNext, 320);
+      };
       synthesis.speak(utterance);
     };
 
-    synthesis.cancel();
-    window.setTimeout(speakNext, 500);
+    const startSpeech = () => {
+      if (cancelled || started) return;
+      started = true;
+      synthesis.cancel();
+      synthesis.resume();
+      window.setTimeout(speakNext, 420);
+    };
+
+    const handleVoicesChanged = () => startSpeech();
+    synthesis.addEventListener?.('voiceschanged', handleVoicesChanged);
+    startTimer = window.setTimeout(startSpeech, 300);
+
     return () => {
       cancelled = true;
+      if (startTimer) window.clearTimeout(startTimer);
+      synthesis.removeEventListener?.('voiceschanged', handleVoicesChanged);
       synthesis.cancel();
     };
   }, [language, lines, voiceEnabled]);

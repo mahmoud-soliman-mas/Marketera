@@ -29,6 +29,7 @@ import { Markdown } from './markdown';
 
 interface AIAssistantProps {
   onNavigate?: (toolId: ToolId) => void;
+  guidePrompt?: string | null;
 }
 
 // ─── Quick Actions ───────────────────────────────────────────────────────────
@@ -71,7 +72,7 @@ const TOOL_ICONS: Record<string, React.ElementType> = {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export function AIAssistant({ onNavigate }: AIAssistantProps) {
+export function AIAssistant({ onNavigate, guidePrompt }: AIAssistantProps) {
   const { settings } = useSettings();
   const { accessibilityMode, speakText } = useAccessibility();
   const [messages, setMessages] = useState<AIMessage[]>([]);
@@ -108,6 +109,13 @@ export function AIAssistant({ onNavigate }: AIAssistantProps) {
       saveConversation(messages);
     }
   }, [messages]);
+
+  // Prefill Lelo’s localized explanation request when the product guide opens the assistant
+  useEffect(() => {
+    if (!guidePrompt) return;
+    setInput(guidePrompt);
+    window.requestAnimationFrame(() => textareaRef.current?.focus());
+  }, [guidePrompt]);
 
   // Auto-resize textarea
   useEffect(() => {

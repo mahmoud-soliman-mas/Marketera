@@ -33,12 +33,14 @@ import { getTool, type ToolId } from '@/lib/tools';
 import { BrandMark, BrandName } from '@/components/brand';
 import { AuroraBackground } from '@/components/visual/aurora-background';
 import { cn } from '@/lib/utils';
+import { LeloHelpButton } from '@/components/lelo-help-button';
 
 function AppContent() {
   const [activeToolId, setActiveToolId] = useState<ToolId>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [reopenedHistory, setReopenedHistory] = useState<HistoryItem | null>(null);
+  const [assistantGuidePrompt, setAssistantGuidePrompt] = useState<string | null>(null);
   const { language, t, direction } = useI18n();
 
   const activeTool = getTool(activeToolId, language);
@@ -52,6 +54,13 @@ function AppContent() {
   const handleRegenerate = useCallback((item: HistoryItem) => {
     setActiveToolId(item.type as ToolId);
     setReopenedHistory({ ...item, results: [] });
+  }, []);
+
+  const handleOpenLelo = useCallback((prompt: string) => {
+    setAssistantGuidePrompt(prompt);
+    setActiveToolId('ai-assistant');
+    setSidebarOpen(false);
+    setSettingsOpen(false);
   }, []);
 
 
@@ -175,7 +184,7 @@ function AppContent() {
             {activeToolId === 'landing-page' && <LandingPageGenerator />}
             {activeToolId === 'product-description' && <ProductDescriptionGenerator />}
             {activeToolId === 'brand-voice' && <BrandVoiceGenerator />}
-            {activeToolId === 'ai-assistant' && <AIAssistant onNavigate={setActiveToolId} />}
+            {activeToolId === 'ai-assistant' && <AIAssistant onNavigate={setActiveToolId} guidePrompt={assistantGuidePrompt} />}
             {activeToolId === 'hook-optimizer' && <AiToolsView toolId="hook-optimizer" />}
             {activeToolId === 'ai-rewrite' && <AiToolsView toolId="ai-rewrite" />}
             {activeToolId === 'cta-generator' && <AiToolsView toolId="cta-generator" />}
@@ -207,6 +216,9 @@ function AppContent() {
         onClose={() => setSettingsOpen(false)}
         onReopenHistory={(item) => { handleReopenHistory(item); setSettingsOpen(false); }}
       />
+
+      {/* Persistent product guide */}
+      <LeloHelpButton activeToolId={activeToolId} onOpenAssistant={handleOpenLelo} />
 
       {/* Inactivity help overlay */}
       <InactivityHelp toolId={activeToolId} />
