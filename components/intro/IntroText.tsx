@@ -7,94 +7,92 @@ interface IntroTextProps {
   exiting: boolean;
 }
 
-const systemMessages = [
-  'INITIALIZING AI CORE...',
-  'ANALYZING MARKET SIGNALS...',
-  'MARKET INTELLIGENCE ONLINE',
+const STORY_STEPS = [
+  { label: 'IDEA', detail: 'A campaign starts with a signal.' },
+  { label: 'CONTENT', detail: 'Turn the idea into high-converting assets.' },
+  { label: 'CAMPAIGN', detail: 'Launch the message across every channel.' },
+  { label: 'AUDIENCE', detail: 'Read the people behind every interaction.' },
+  { label: 'ANALYTICS', detail: 'Transform raw data into clarity.' },
+  { label: 'AI INSIGHT', detail: 'Optimize the next decision intelligently.' },
 ];
 
+const getStepIndex = (progress: number) => {
+  if (progress < 0.17) return 0;
+  if (progress < 0.36) return 1;
+  if (progress < 0.54) return 2;
+  if (progress < 0.7) return 3;
+  if (progress < 0.86) return 4;
+  return 5;
+};
+
 export default function IntroText({ progress, exiting }: IntroTextProps) {
-  const messageIndex = progress < 0.26 ? 0 : progress < 0.6 ? 1 : 2;
-  const markReveal = Math.max(0, Math.min(1, (progress - 0.4) / 0.32));
-  const wordmarkReveal = Math.max(0, Math.min(1, (progress - 0.62) / 0.2));
-  const taglineReveal = Math.max(0, Math.min(1, (progress - 0.73) / 0.18));
+  const stepIndex = getStepIndex(progress);
+  const currentStep = STORY_STEPS[stepIndex];
+  const showFinalLogo = progress > 0.91;
+  const stageProgress = Math.min(1, progress / 0.91);
 
   return (
-    <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-6 text-center text-white">
-      <div className="relative flex w-full max-w-3xl flex-col items-center">
-        <motion.div
-          className="mb-8 flex items-center gap-3 text-[9px] font-medium uppercase tracking-[0.44em] text-cyan-100/55 sm:text-[10px]"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: exiting ? 0 : 1, y: exiting ? -12 : 0 }}
-          transition={{ duration: 0.7, ease: [0.23, 1, 0.32, 1] }}
-        >
-          <span className="h-px w-8 bg-cyan-200/35 sm:w-12" />
-          <AnimatePresence mode="wait">
-            <motion.span
-              key={systemMessages[messageIndex]}
-              initial={{ opacity: 0, y: 5, filter: 'blur(4px)' }}
-              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-              exit={{ opacity: 0, y: -5, filter: 'blur(4px)' }}
-              transition={{ duration: 0.42 }}
-            >
-              {systemMessages[messageIndex]}
-            </motion.span>
-          </AnimatePresence>
-          <span className="h-px w-8 bg-cyan-200/35 sm:w-12" />
-        </motion.div>
+    <div className="pointer-events-none absolute inset-0 z-10 text-white">
+      <motion.div
+        className="absolute left-6 top-6 flex items-center gap-3 sm:left-9 sm:top-8"
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: exiting ? 0 : 1, y: exiting ? -10 : 0 }}
+        transition={{ duration: 0.55 }}
+      >
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-cyan-100/30 bg-white/[0.06] text-lg font-black text-cyan-100 shadow-[0_0_30px_rgba(55,208,255,0.22)]">M</span>
+        <span className="text-[10px] font-semibold uppercase tracking-[0.34em] text-white/72 sm:text-xs">MARKETERA</span>
+      </motion.div>
 
-        <motion.div
-          className="relative mb-7 flex h-24 w-24 items-center justify-center rounded-[28px] border border-cyan-100/40 bg-white/[0.045] shadow-[0_0_80px_rgba(47,189,255,0.25),inset_0_0_35px_rgba(255,255,255,0.05)] backdrop-blur-sm sm:h-28 sm:w-28"
-          initial={{ opacity: 0, scale: 0.92, rotate: -5 }}
-          animate={{
-            opacity: exiting ? 0 : markReveal,
-            scale: exiting ? 1.08 : 0.98 + markReveal * 0.02,
-            rotate: exiting ? 4 : 0,
-          }}
-          transition={{ duration: 0.8, ease: [0.23, 1, 0.32, 1] }}
-        >
-          <span className="absolute inset-2 rounded-[22px] border border-cyan-200/10" />
-          <span className="bg-gradient-to-br from-white via-cyan-100 to-cyan-400 bg-clip-text text-6xl font-black tracking-[-0.12em] text-transparent sm:text-7xl">M</span>
-          <span className="absolute -inset-5 rounded-[36px] border border-cyan-200/10" />
-        </motion.div>
+      <motion.div
+        className="absolute right-6 top-7 text-right sm:right-9 sm:top-9"
+        initial={{ opacity: 0, x: 8 }}
+        animate={{ opacity: exiting ? 0 : 1, x: exiting ? 10 : 0 }}
+        transition={{ duration: 0.55, delay: 0.1 }}
+      >
+        <p className="text-[9px] font-medium uppercase tracking-[0.26em] text-cyan-100/55 sm:text-[10px]">CAMPAIGN OS / 001</p>
+        <p className="mt-1 text-[9px] uppercase tracking-[0.18em] text-white/25">DIGITAL MARKETING INTELLIGENCE</p>
+      </motion.div>
 
+      <div className="absolute inset-x-0 bottom-8 flex justify-center px-5 sm:bottom-10">
         <motion.div
-          className="overflow-hidden"
-          initial={{ opacity: 0, y: 24, filter: 'blur(9px)' }}
-          animate={{
-            opacity: exiting ? 0 : wordmarkReveal,
-            y: exiting ? -20 : (1 - wordmarkReveal) * 24,
-            filter: exiting ? 'blur(8px)' : `blur(${(1 - wordmarkReveal) * 9}px)`,
-          }}
-          transition={{ duration: 0.8, ease: [0.23, 1, 0.32, 1] }}
+          className="w-full max-w-3xl"
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: exiting ? 0 : showFinalLogo ? 0 : 1, y: exiting ? -16 : 0 }}
+          transition={{ duration: 0.62, ease: [0.23, 1, 0.32, 1] }}
         >
-          <h1 className="text-3xl font-semibold tracking-[0.28em] text-white sm:text-5xl sm:tracking-[0.42em]">
-            MARKETRA <span className="text-cyan-300">AI</span>
-          </h1>
-        </motion.div>
-
-        <motion.p
-          className="mt-4 text-[10px] font-medium uppercase tracking-[0.28em] text-cyan-100/55 sm:text-xs sm:tracking-[0.42em]"
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: exiting ? 0 : taglineReveal, y: exiting ? -12 : (1 - taglineReveal) * 12 }}
-          transition={{ duration: 0.7, ease: [0.23, 1, 0.32, 1] }}
-        >
-          AI-POWERED MARKETING INTELLIGENCE
-        </motion.p>
-
-        <motion.div
-          className="mt-10 flex w-52 items-center gap-3 sm:w-64"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: exiting ? 0 : 0.7 }}
-          transition={{ duration: 0.5 }}
-          aria-hidden="true"
-        >
-          <div className="h-px flex-1 bg-white/10" />
-          <div className="h-px w-20 overflow-hidden bg-white/10 sm:w-28">
-            <motion.div className="h-full origin-left bg-gradient-to-r from-cyan-400 to-blue-400" animate={{ scaleX: Math.max(0.04, progress) }} />
+          <div className="mb-4 flex items-end justify-between gap-4">
+            <div>
+              <p className="text-[9px] font-medium uppercase tracking-[0.34em] text-cyan-200/55">MARKETING CAMPAIGN / BUILDING</p>
+              <AnimatePresence mode="wait">
+                <motion.div key={currentStep.label} initial={{ opacity: 0, y: 8, filter: 'blur(4px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, y: -8, filter: 'blur(4px)' }} transition={{ duration: 0.32 }}>
+                  <h2 className="mt-1 text-2xl font-semibold tracking-[0.18em] text-white sm:text-3xl">{currentStep.label}</h2>
+                  <p className="mt-1 max-w-md text-xs text-white/48 sm:text-sm">{currentStep.detail}</p>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+            <span className="pb-1 font-mono text-[10px] tracking-[0.2em] text-cyan-200/48">{String(Math.round(progress * 100)).padStart(3, '0')}%</span>
           </div>
-          <div className="h-px flex-1 bg-white/10" />
+          <div className="mb-3 h-px w-full overflow-hidden bg-white/12">
+            <motion.div className="h-full origin-left bg-gradient-to-r from-cyan-300 via-blue-400 to-violet-300" animate={{ scaleX: stageProgress }} transition={{ duration: 0.18 }} />
+          </div>
+          <div className="flex items-center justify-between gap-1">
+            {STORY_STEPS.map((step, index) => (
+              <div key={step.label} className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+                <span className={`h-1.5 w-1.5 flex-none rounded-full transition-colors duration-300 ${index <= stepIndex ? 'bg-cyan-200 shadow-[0_0_10px_rgba(129,230,255,0.8)]' : 'bg-white/20'}`} />
+                <span className={`hidden truncate text-[8px] font-medium uppercase tracking-[0.14em] transition-colors duration-300 sm:block ${index === stepIndex ? 'text-white/70' : index < stepIndex ? 'text-cyan-200/42' : 'text-white/22'}`}>{step.label}</span>
+              </div>
+            ))}
+          </div>
         </motion.div>
+
+        <AnimatePresence>
+          {showFinalLogo && (
+            <motion.div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 flex-col items-center text-center" initial={{ opacity: 0, scale: 0.92, filter: 'blur(8px)' }} animate={{ opacity: exiting ? 0 : 1, scale: 1, filter: 'blur(0px)' }} transition={{ duration: 0.6, ease: [0.23, 1, 0.32, 1] }}>
+              <p className="text-4xl font-semibold tracking-[0.24em] text-white sm:text-6xl sm:tracking-[0.38em]">MARKETERA</p>
+              <p className="mt-3 text-[10px] font-medium uppercase tracking-[0.34em] text-cyan-100/65 sm:text-xs">AI-POWERED DIGITAL MARKETING</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
