@@ -21,9 +21,9 @@ import {
   clearMemory,
 } from '@/lib/ai-assistant/service';
 import type { AIMessage, SuggestedAction, FollowUpOption, ConversationMemory } from '@/lib/ai-assistant/types';
-import { detectLang } from '@/lib/api';
 import { toast } from 'sonner';
 import { voiceService } from '@/lib/voice/service';
+import { useI18n } from '@/lib/i18n';
 import type { ToolId } from '@/lib/tools';
 import { Markdown } from './markdown';
 
@@ -74,6 +74,7 @@ const TOOL_ICONS: Record<string, React.ElementType> = {
 
 export function AIAssistant({ onNavigate, guidePrompt }: AIAssistantProps) {
   const { settings } = useSettings();
+  const { language: appLanguage } = useI18n();
   const { accessibilityMode, speakText } = useAccessibility();
   const [messages, setMessages] = useState<AIMessage[]>([]);
   const [input, setInput] = useState('');
@@ -156,10 +157,7 @@ export function AIAssistant({ onNavigate, guidePrompt }: AIAssistantProps) {
     };
   }, []);
 
-  const autoLang = detectLang(input);
-  const language: 'ar' | 'en' = settings.autoLanguage || settings.languageMode === 'auto'
-    ? autoLang
-    : settings.languageMode;
+  const language: 'ar' | 'en' = appLanguage;
   const isAr = language === 'ar';
 
   // ─── Send Message (with streaming) ──────────────────────────────────────────
@@ -246,7 +244,9 @@ export function AIAssistant({ onNavigate, guidePrompt }: AIAssistantProps) {
           setMessages((prev) => [...prev, partialMessage]);
         }
       } else {
-        toast.error(isAr ? 'حدث خطأ. يرجى المحاولة مرة أخرى.' : 'Something went wrong. Please try again.');
+        const errorMessage = err instanceof Error ? err.message : '';
+        const fallbackMessage = isAr ? 'حدث خطأ. يرجى المحاولة مرة أخرى.' : 'Something went wrong. Please try again.';
+        toast.error(errorMessage && !errorMessage.includes('Failed to fetch') ? errorMessage : fallbackMessage);
       }
     } finally {
       setLoading(false);
@@ -460,7 +460,8 @@ export function AIAssistant({ onNavigate, guidePrompt }: AIAssistantProps) {
     } else {
       setIsSpeaking(true);
       try {
-        await voiceService.tts.speak({ text, lang: language, rate: accessibilityMode ? 0.85 : 1.0 });
+        voiceService.tts.setLanguage(language);
+        await voiceService.tts.speak({ text, lang: language, rate: accessibilityMode ? 0.78 : 0.86 });
       } catch {
         toast.error(isAr ? 'فشل قراءة النص' : 'Failed to speak text');
       } finally {
@@ -773,13 +774,16 @@ export function AIAssistant({ onNavigate, guidePrompt }: AIAssistantProps) {
           <div className="relative flex items-end gap-2.5">
             {/* Microphone Button */}
             <Button
+              type="button"
               onClick={handleVoiceInput}
               size="lg"
+              aria-label={isListening ? (isAr ? 'إيقاف التسجيل' : 'Stop recording') : (isAr ? 'تسجيل رسالة صوتية' : 'Record voice message')}
+              title={isListening ? (isAr ? 'إيقاف التسجيل' : 'Stop recording') : (isAr ? 'تسجيل رسالة صوتية' : 'Record voice message')}
               className={cn(
-                'h-12 w-12 flex-shrink-0 rounded-2xl shadow-md transition-all duration-300',
+                'h-12 w-12 min-w-12 flex-shrink-0 rounded-2xl border-2 shadow-md transition-all duration-300',
                 isListening
                   ? 'bg-rose-500 hover:bg-rose-600 text-white shadow-rose-500/30'
-                  : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                  : 'border-slate-200 bg-slate-100 text-slate-600 hover:border-sky-300 hover:bg-sky-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300 dark:hover:border-sky-500/60 dark:hover:bg-slate-600'
               )}
             >
               {isListening ? (
@@ -824,22 +828,28 @@ export function AIAssistant({ onNavigate, guidePrompt }: AIAssistantProps) {
             {/* Send / Stop Button */}
             {isStreaming ? (
               <Button
+                type="button"
                 onClick={handleStop}
                 size="lg"
-                className="h-12 w-12 flex-shrink-0 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white shadow-lg shadow-rose-500/30 transition-all hover:scale-105 active:scale-100"
+                aria-label={isAr ? 'إيقاف التوليد' : 'Stop generating'}
+                title={isAr ? 'إيقاف التوليد' : 'Stop generating'}
+                className="h-12 w-12 min-w-12 flex-shrink-0 rounded-2xl border-2 border-rose-300 bg-rose-500 text-white shadow-lg shadow-rose-500/30 transition-all hover:bg-rose-600 hover:scale-105 active:scale-100"
               >
                 <Square className="h-5 w-5" fill="currentColor" />
               </Button>
             ) : (
               <Button
+                type="button"
                 onClick={() => handleSend()}
-                disabled={!input.trim()}
+                disabled={loading}
                 size="lg"
+                aria-label={isAr ? 'إرسال الرسالة' : 'Send message'}
+                title={isAr ? 'إرسال الرسالة' : 'Send message'}
                 className={cn(
-                  'h-12 w-12 flex-shrink-0 rounded-2xl shadow-lg transition-all duration-300',
+                  'h-12 w-12 min-w-12 flex-shrink-0 rounded-2xl border-2 shadow-lg transition-all duration-300',
                   input.trim()
                     ? 'bg-gradient-to-r from-sky-500 to-cyan-500 hover:from-sky-600 hover:to-cyan-600 text-white shadow-sky-500/30 hover:shadow-sky-500/50 hover:scale-105 active:scale-100'
-                    : 'bg-slate-100 dark:bg-slate-700 text-slate-300 dark:text-slate-500'
+                    : 'border-slate-300 bg-slate-100 text-slate-600 dark:border-slate-500 dark:bg-slate-700 dark:text-slate-200'
                 )}
               >
                 <Send className="h-5 w-5" />

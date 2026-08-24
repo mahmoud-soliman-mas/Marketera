@@ -303,7 +303,19 @@ export const aiAssistantService = {
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      throw new Error(data?.error || 'Failed to get response. Please try again.');
+      throw new Error(data?.error || `AI service request failed (${res.status}). Please try again.`);
+    }
+
+    const contentType = res.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      const data = await res.json().catch(() => ({}));
+      const jsonContent = data?.response ?? data?.reply ?? data?.result;
+      if (typeof jsonContent !== 'string' || !jsonContent.trim()) {
+        throw new Error('The AI service returned an empty response. Please try again.');
+      }
+      onToken(jsonContent);
+      this.extractAndSaveMemory(req.message, jsonContent, memory);
+      return jsonContent;
     }
 
     const reader = res.body?.getReader();
@@ -319,6 +331,8 @@ export const aiAssistantService = {
       fullContent += chunk;
       onToken(chunk);
     }
+
+    if (!fullContent.trim()) throw new Error('The AI service returned an empty response. Please try again.');
 
     // Update memory after streaming completes
     this.extractAndSaveMemory(req.message, fullContent, memory);

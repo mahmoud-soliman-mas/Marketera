@@ -500,23 +500,158 @@ function okResponse(body: unknown) {
   });
 }
 
-// ─── Generic AI Provider Callers ───────────────────────────────────────────────
+// ─── OpenAI-compatible AI Provider Callers ─────────────────────────────────────
 
-async function callAiProvider(system: string, user: string, creativity: unknown) {
-  // يمكنك هنا إضافة كود الاتصال بأي مزود AI آخر (مثل OpenAI / Gemini / Claude)
-  // مثال على استرجاع النص:
-  console.log("System Prompt:", system);
-  console.log("User Input:", user);
+type ChatRole = "system" | "user" | "assistant";
+type ChatMessage = { role: ChatRole; content: string };
 
-  return null; // يستبدل بنص الـ JSON القادم من المزود الجديد
+function getAiProviderConfig() {
+  const genericKey = Deno.env.get("AI_API_KEY");
+  const groqKey = Deno.env.get("GROQ_API_KEY");
+  const openAiKey = Deno.env.get("OPENAI_API_KEY");
+  const configuredProvider = Deno.env.get("AI_PROVIDER")?.toLowerCase();
+  const provider = configuredProvider ?? (genericKey ? "groq" : openAiKey && !groqKey ? "openai" : "groq");
+  const apiKey = genericKey ?? (provider === "openai" ? openAiKey : groqKey) ?? openAiKey ?? groqKey;
+  const defaultBaseUrl = provider === "openai" ? (Deno.env.get("OPENAI_BASE_URL") ?? "https://api.openai.com/v1") : "https://api.groq.com/openai/v1";
+  const baseUrl = (Deno.env.get("AI_BASE_URL") ?? defaultBaseUrl).replace(/\/$/, "");
+  const model = Deno.env.get("AI_MODEL") ?? (provider === "openai" ? "gpt-4o-mini" : "llama-3.3-70b-versatile");
+  return { apiKey, baseUrl, model };
+}
+
+function buildChatMessages(system: string, user: string, history: Array<{ role: string; content: string }> = []): ChatMessage[] {
+  const safeHistory = history
+    .filter((message) => message && (message.role === "user" || message.role === "assistant") && typeof message.content === "string")
+    .slice(-10)
+    .map((message) => ({ role: message.role as "user" | "assistant", content: message.content.slice(0, 12000) }));
+  return [{ role: "system", content: system }, ...safeHistory, { role: "user", content: user }];
+}
+
+async function callAiProvider(system: string, user: string, creativity: unknown): Promise<string | null> {
+  const { apiKey, baseUrl, model } = getAiProviderConfig();
+  if (!apiKey) {
+    console.error("AI provider is not configured. Set AI_API_KEY, GROQ_API_KEY, or OPENAI_API_KEY.");
+    return null;
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 45000);
+  try {
+    const response = await fetch(`${baseUrl}/chat/completions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model,
+        messages: buildChatMessages(system, user),
+        temperature: temperatureFromCreativity(creativity),
+        max_tokens: 4096,
+      }),
+      signal: controller.signal,
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      console.error("AI provider error:", response.status, data);
+      return null;
+    }
+    const content = data?.choices?.[0]?.message?.content;
+    return typeof content === "string" && content.trim() ? content.trim() : null;
+  } catch (error) {
+    console.error("AI provider request failed:", error);
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 async function callAiProviderStream(system: string, user: string, history: Array<{ role: string; content: string }> = [], creativity: unknown): Promise<Response> {
-  // يمكنك استبداله بكود Stream الخاص بالمزود الجديد
-  return new Response(JSON.stringify({ error: "Stream function not configured." }), {
-    status: 501,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
+  const { apiKey, baseUrl, model } = getAiProviderConfig();
+  if (!apiKey) return errorResponse("AI provider is not configured. Please contact the administrator.", 503);
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 60000);
+  try {
+    const upstream = await fetch(`${baseUrl}/chat/completions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model,
+        messages: buildChatMessages(system, user, history),
+        temperature: temperatureFromCreativity(creativity),
+        max_tokens: 4096,
+        stream: true,
+      }),
+      signal: controller.signal,
+    });
+
+    if (!upstream.ok || !upstream.body) {
+      const details = await upstream.text().catch(() => "");
+      console.error("AI stream provider error:", upstream.status, details.slice(0, 1000));
+      return errorResponse("The AI service is temporarily unavailable. Please try again.", 502);
+    }
+
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
+    const reader = upstream.body.getReader();
+    const stream = new ReadableStream({
+      async start(streamController) {
+        let buffer = "";
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const events = buffer.split("\n");
+            buffer = events.pop() ?? "";
+            for (const event of events) {
+              const line = event.trim();
+              if (!line.startsWith("data:")) continue;
+              const payload = line.slice(5).trim();
+              if (!payload || payload === "[DONE]") continue;
+              try {
+                const token = JSON.parse(payload)?.choices?.[0]?.delta?.content;
+                if (typeof token === "string" && token) streamController.enqueue(encoder.encode(token));
+              } catch {
+                // Ignore incomplete SSE frames; the next chunk will complete them.
+              }
+            }
+          }
+          if (buffer.startsWith("data:")) {
+            const payload = buffer.slice(5).trim();
+            if (payload && payload !== "[DONE]") {
+              try {
+                const token = JSON.parse(payload)?.choices?.[0]?.delta?.content;
+                if (typeof token === "string" && token) streamController.enqueue(encoder.encode(token));
+              } catch {}
+            }
+          }
+          streamController.close();
+        } catch (error) {
+          console.error("AI stream read failed:", error);
+          streamController.error(error);
+        } finally {
+          clearTimeout(timeout);
+        }
+      },
+      cancel() {
+        clearTimeout(timeout);
+        reader.cancel().catch(() => undefined);
+      },
+    });
+
+    return new Response(stream, {
+      status: 200,
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        Connection: "keep-alive",
+      },
+    });
+  } catch (error) {
+    clearTimeout(timeout);
+    console.error("AI stream request failed:", error);
+    return errorResponse("The AI service is temporarily unavailable. Please try again.", 502);
+  }
 }
 
 // ─── Main handler ──────────────────────────────────────────────────────────────
@@ -654,7 +789,8 @@ Deno.serve(async (req: Request) => {
       }
 
       const content = await callAiProvider(system, userMsg, req2.creativity);
-      return okResponse({ reply: content });
+      if (!content) return errorResponse("The AI service is temporarily unavailable. Please try again.", 502);
+      return okResponse({ response: content });
     }
 
     // ── Fallback for other JSON Generation endpoints ──────────────────────

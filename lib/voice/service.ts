@@ -270,53 +270,80 @@ export class TextToSpeech {
     }
 
     return new Promise((resolve, reject) => {
-      const utterance = new SpeechSynthesisUtterance(options.text);
+      let settled = false;
+      let voiceTimer: number | undefined;
 
-      // Auto-detect language from text content
-      const isArabic = detectArabic(options.text);
-      const textLang = options.lang || (isArabic ? 'ar' : 'en');
-      this.currentLang = textLang;
+      const finish = (error?: string) => {
+        if (settled) return;
+        settled = true;
+        if (voiceTimer) window.clearTimeout(voiceTimer);
+        this.synthesis?.removeEventListener?.('voiceschanged', handleVoicesChanged);
+        if (error) {
+          this.status = 'error';
+          this.statusListeners.forEach((listener) => listener(this.status));
+          options.onError?.(error);
+          reject(new Error(error));
+        } else {
+          resolve();
+        }
+      };
 
-      // Select the best voice for the language
-      const voice = this.getBestVoiceForLanguage(textLang);
-      if (voice) {
-        utterance.voice = voice;
-        utterance.lang = voice.lang;
+      const speakNow = () => {
+        if (settled || !this.synthesis) return;
+        this.loadVoices();
+        const utterance = new SpeechSynthesisUtterance(options.text);
+
+        // The explicit application language always wins over text auto-detection.
+        const isArabic = detectArabic(options.text);
+        const textLang = options.lang || (isArabic ? 'ar' : 'en');
+        this.currentLang = textLang;
+
+        const voice = this.getBestVoiceForLanguage(textLang);
+        if (voice) {
+          utterance.voice = voice;
+          utterance.lang = voice.lang;
+        } else {
+          utterance.lang = textLang === 'ar' ? 'ar-SA' : 'en-US';
+        }
+
+        utterance.rate = options.rate ?? 0.86;
+        if (options.pitch !== undefined) utterance.pitch = options.pitch;
+        utterance.volume = options.volume ?? 1;
+
+        utterance.onstart = () => {
+          this.status = 'speaking';
+          this.statusListeners.forEach((listener) => listener(this.status));
+          options.onStart?.();
+        };
+        utterance.onend = () => {
+          this.status = 'idle';
+          this.statusListeners.forEach((listener) => listener(this.status));
+          options.onEnd?.();
+          finish();
+        };
+        utterance.onerror = (event) => finish(event.error || 'Speech synthesis failed');
+
+        try {
+          this.synthesis.resume();
+          this.synthesis.speak(utterance);
+        } catch (error) {
+          finish(error instanceof Error ? error.message : 'Speech synthesis failed');
+        }
+      };
+
+      const handleVoicesChanged = () => {
+        this.loadVoices();
+        if (this.voices.length > 0) speakNow();
+      };
+
+      this.synthesis?.addEventListener?.('voiceschanged', handleVoicesChanged);
+      this.loadVoices();
+      if (this.voices.length > 0) {
+        speakNow();
       } else {
-        // Fallback to language code
-        utterance.lang = textLang === 'ar' ? 'ar-SA' : 'en-US';
+        // Some browsers populate voices asynchronously; do not speak before they are ready.
+        voiceTimer = window.setTimeout(speakNow, 900);
       }
-
-      // Use natural speaking rate
-      if (options.rate !== undefined) {
-        utterance.rate = options.rate;
-      } else {
-        utterance.rate = 1.0; // Natural speed
-      }
-
-      if (options.pitch !== undefined) utterance.pitch = options.pitch;
-
-      utterance.onstart = () => {
-        this.status = 'speaking';
-        this.statusListeners.forEach((l) => l(this.status));
-        options.onStart?.();
-      };
-
-      utterance.onend = () => {
-        this.status = 'idle';
-        this.statusListeners.forEach((l) => l(this.status));
-        options.onEnd?.();
-        resolve();
-      };
-
-      utterance.onerror = (event) => {
-        this.status = 'error';
-        this.statusListeners.forEach((l) => l(this.status));
-        options.onError?.(event.error);
-        reject(new Error(event.error));
-      };
-
-      this.synthesis!.speak(utterance);
     });
   }
 

@@ -21,6 +21,7 @@ export interface TextToSpeechOptions {
   voice?: string;
   rate?: number;
   pitch?: number;
+  volume?: number;
   onStart?: () => void;
   onEnd?: () => void;
   onError?: (error: string) => void;
