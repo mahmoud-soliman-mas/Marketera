@@ -13,12 +13,18 @@ interface RobotSceneProps {
   progressRef: React.MutableRefObject<number>;
   speaking: boolean;
   reducedMotion?: boolean;
+  playing?: boolean;
 }
 
-function RobotTimelineDriver({ progressRef }: { progressRef: React.MutableRefObject<number> }) {
+function RobotTimelineDriver({ progressRef, playing = true }: { progressRef: React.MutableRefObject<number>; playing?: boolean }) {
   const startTime = useRef<number | null>(null);
 
   useFrame(({ clock }) => {
+    if (!playing) {
+      startTime.current = null;
+      progressRef.current = 0;
+      return;
+    }
     if (startTime.current === null) startTime.current = clock.getElapsedTime();
     progressRef.current = clamp01(((clock.getElapsedTime() - startTime.current) * 1000) / ROBOT_DURATION_MS);
   });
@@ -82,7 +88,7 @@ function RobotEnvironment({ progressRef, reducedMotion = false }: RobotSceneProp
   );
 }
 
-export default function RobotScene({ progressRef, speaking, reducedMotion = false }: RobotSceneProps) {
+export default function RobotScene({ progressRef, speaking, reducedMotion = false, playing = true }: RobotSceneProps) {
   return (
     <Canvas
       dpr={[1, 1.5]}
@@ -90,7 +96,7 @@ export default function RobotScene({ progressRef, speaking, reducedMotion = fals
       gl={{ antialias: false, alpha: false, powerPreference: 'high-performance' }}
       onCreated={({ gl }) => gl.setClearColor('#030914', 1)}
     >
-      <RobotTimelineDriver progressRef={progressRef} />
+      <RobotTimelineDriver progressRef={progressRef} playing={playing} />
       <color attach="background" args={['#030914']} />
       <fogExp2 attach="fog" args={['#07192f', 0.035]} />
       <ambientLight intensity={0.18} color="#6aa7ff" />

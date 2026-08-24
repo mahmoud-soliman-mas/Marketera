@@ -3,8 +3,9 @@
 import { ReactNode } from 'react';
 import { useIntro } from '@/hooks/useIntro';
 import Intro from '@/components/intro/intro';
+import { I18nProvider } from '@/lib/i18n';
 
-export default function ClientLayout({ children }: { children: ReactNode }) {
+function ClientLayoutContent({ children }: { children: ReactNode }) {
   const { ready, showIntro, finishIntro } = useIntro();
 
   return (
@@ -12,5 +13,13 @@ export default function ClientLayout({ children }: { children: ReactNode }) {
       {ready && showIntro && <Intro onFinish={finishIntro} />}
       {children}
     </>
+  );
+}
+
+export default function ClientLayout({ children }: { children: ReactNode }) {
+  return (
+    <I18nProvider>
+      <ClientLayoutContent>{children}</ClientLayoutContent>
+    </I18nProvider>
   );
 }

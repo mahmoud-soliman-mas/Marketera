@@ -26,7 +26,7 @@ import { ProjectsView } from '@/components/projects/projects-view';
 import { CommandPalette, CommandPaletteHint } from '@/components/command-palette/command-palette';
 import { SettingsProvider } from '@/lib/settings';
 import { HistoryProvider, type HistoryItem } from '@/lib/history';
-import { I18nProvider, useI18n } from '@/lib/i18n';
+import { useI18n } from '@/lib/i18n';
 import { AccessibilityProvider } from '@/lib/accessibility/provider';
 import { InactivityHelp } from '@/components/accessibility/inactivity-help';
 import { getTool, type ToolId } from '@/lib/tools';
@@ -216,14 +216,12 @@ function AppContent() {
 
 export default function Home() {
   return (
-    <I18nProvider>
-      <SettingsProvider>
-        <HistoryProvider>
-          <AccessibilityProvider>
-            <AppContent />
-          </AccessibilityProvider>
-        </HistoryProvider>
-      </SettingsProvider>
-    </I18nProvider>
+    <SettingsProvider>
+      <HistoryProvider>
+        <AccessibilityProvider>
+          <AppContent />
+        </AccessibilityProvider>
+      </HistoryProvider>
+    </SettingsProvider>
   );
 }
